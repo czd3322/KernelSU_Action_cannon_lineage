@@ -178,8 +178,8 @@ jobs:
         KSU_VERSION=$(cd KernelSU && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
         echo "UPLOADNAME=-KernelSU_$KSU_VERSION" >> $GITHUB_ENV
 
-    - name: Setup Configuration for Kernel
-      run: |
+    - name: Setup Configuration for Kernel名称: 内核名称的设置配置: 内内核名称的设置配置: 内核名称的设置配置: 内内核名称的设置配置: 内核名称的设置配置: 内内核名称的设置配置: 内核名称的设置配置: 内核名称的设置配置: 内核设置配置
+      run: |      运行: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         if [ ${{ env.APPLY_KSU_PATCH }} = true ]; then
             bash $GITHUB_WORKSPACE/patches/patches.sh
@@ -217,14 +217,16 @@ jobs:
         max-size: 2G
 
     - name: Build kernel
-      run: |
+      run: |      运行: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH
+         export HOSTCC=gcc         导出 HOSTCC=gcc
+        export HOSTCXX=g++        导出 HOSTCXX=g++
         export KBUILD_BUILD_HOST=Github-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
         if [ ! -z ${{ env.KSU_EXPECTED_SIZE }} ] && [ ! -z ${{ env.KSU_EXPECTED_HASH }} ]; then
           export KSU_EXPECTED_SIZE=${{ env.KSU_EXPECTED_SIZE }}
-          export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
+          export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}          导出 KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
         fi
         make -j$(nproc --all) CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} ${{ env.KERNEL_CONFIG }}
         if [ ${{ env.ENABLE_CCACHE }} = true ]; then
@@ -234,7 +236,7 @@ jobs:
         fi
 
     - name: Check a kernel output files
-      run: |
+      run: |      运行: |
        cd $GITHUB_WORKSPACE/kernel_workspace
        if [ -f android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} ]; then
            echo "CHECK_FILE_IS_OK=true" >> $GITHUB_ENV
