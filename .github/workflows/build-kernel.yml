@@ -1,9 +1,8 @@
+name: Build Kernel
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
 
 jobs:
   build:
@@ -60,6 +59,7 @@ jobs:
         echo "SOURCE_BOOT_IMAGE=$(cat $CONFIG_ENV | grep -w "SOURCE_BOOT_IMAGE" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         echo "KSU_EXPECTED_SIZE=$(cat $CONFIG_ENV | grep -w "KSU_EXPECTED_SIZE" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         echo "KSU_EXPECTED_HASH=$(cat $CONFIG_ENV | grep -w "KSU_EXPECTED_HASH" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
+
     - name: Set swap to 10G
       uses: pierotofy/set-swap-space@master
       with:
@@ -72,6 +72,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
         mkdir -p $GITHUB_WORKSPACE/kernel_workspace
+
     - name: Download Clang-aosp
       if: env.USE_CUSTOM_CLANG != 'true'
       run: |
@@ -79,6 +80,7 @@ jobs:
         mkdir clang-aosp
         wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/${{ env.CLANG_BRANCH }}/clang-${{ env.CLANG_VERSION }}.tar.gz
         tar -C clang-aosp/ -zxvf clang-${{ env.CLANG_VERSION }}.tar.gz
+
     - name: Download Custom-Clang
       if: env.USE_CUSTOM_CLANG == 'true'
       run: |
@@ -96,6 +98,7 @@ jobs:
             mkdir clang-aosp
             unzip clang.zip -d clang-aosp/
         fi
+
     - name: Download Gcc-aosp
       if: env.USE_CUSTOM_GCC_64 != 'true' || env.USE_CUSTOM_GCC_32 != 'true'
       run: |
@@ -106,12 +109,14 @@ jobs:
             tar -C gcc-64/ -zxvf gcc-aarch64.tar.gz
             echo "GCC_64=CROSS_COMPILE=$GITHUB_WORKSPACE/kernel_workspace/gcc-64/bin/aarch64-linux-android-" >> $GITHUB_ENV
         fi
+
         if [ ${{ env.ENABLE_GCC_ARM32 }} = true ]; then
             mkdir gcc-32
             wget -O gcc-arm.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
             tar -C gcc-32/ -zxvf gcc-arm.tar.gz
             echo "GCC_32=CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/kernel_workspace/gcc-32/bin/arm-linux-androideabi-" >> $GITHUB_ENV
         fi
+
     - name: Download Custom-Gcc
       if: env.USE_CUSTOM_GCC_64 == 'true' || env.USE_CUSTOM_GCC_32 == 'true'
       run: |
@@ -132,6 +137,7 @@ jobs:
           fi
           echo "GCC_64=CROSS_COMPILE=$GITHUB_WORKSPACE/kernel_workspace/gcc-64/bin/${{ env.CUSTOM_GCC_64_BIN }}" >> $GITHUB_ENV
         fi
+
         if [ ${{ env.USE_CUSTOM_GCC_32 }} = true ]; then
           if [[ ${{ env.CUSTOM_GCC_32_SOURCE }} =~ git ]]; then
               if [[ ${{ env.CUSTOM_GCC_32_SOURCE }} == *'.tar.gz' ]]; then
@@ -148,11 +154,13 @@ jobs:
           fi
           echo "GCC_32=CROSS_COMPILE=$GITHUB_WORKSPACE/kernel_workspace/gcc-32/bin/${{ env.CUSTOM_GCC_32_BIN }}" >> $GITHUB_ENV
         fi
+
     - name: Download mkbootimg tools
       if: env.BUILD_BOOT_IMG == 'true'
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         git clone https://android.googlesource.com/platform/system/tools/mkbootimg tools -b master-kernel-build-2022 --depth=1
+
     - name: Download kernel source
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
@@ -162,6 +170,7 @@ jobs:
         else
           echo "LOCALVERSION=" >> $GITHUB_ENV
         fi
+
     - name: Download source boot image
       if: env.BUILD_BOOT_IMG == 'true'
       run: |
@@ -180,6 +189,7 @@ jobs:
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s ${{ env.KERNELSU_TAG }}
         KSU_VERSION=$(cd KernelSU && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
         echo "UPLOADNAME=-KernelSU_$KSU_VERSION" >> $GITHUB_ENV
+
     - name: Setup Configuration for Kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
@@ -210,6 +220,7 @@ jobs:
         if [ ${{ env.DISABLE_CC_WERROR }} = true ]; then
             echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         fi
+
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
       uses: hendrikmuhs/ccache-action@v1.2
@@ -233,6 +244,7 @@ jobs:
         else
             make -j$(nproc --all) CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }}
         fi
+
     - name: Check a kernel output files
       run: |
        cd $GITHUB_WORKSPACE/kernel_workspace
@@ -264,6 +276,7 @@ jobs:
             cp android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
         fi
         rm -rf AnyKernel3/.git* AnyKernel3/README.md
+
     - name: Make Custom-Anykernel3
       if: env.CHECK_FILE_IS_OK == 'true' && env.USE_CUSTOM_ANYKERNEL3 == 'true'
       run: |
@@ -286,6 +299,7 @@ jobs:
             cp android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
         fi
         rm -rf AnyKernel3/.git* AnyKernel3/README.md
+
     - name: Make boot image
       if: env.HAVE_SOURCE_BOOT_IMAGE == 'true' && env.CHECK_FILE_IS_OK == 'true'
       run: |
@@ -296,36 +310,34 @@ jobs:
         if [ -f boot.img ]; then
             echo "MAKE_BOOT_IMAGE_IS_OK=true" >> $GITHUB_ENV
         else
-            echo "Boot image is empty"            echo "引导镜像为空"
+            echo "Boot image is empty"
             exit 1
         fi
     
-    - name: Upload ${{上传 ${{ env.KERNEL_IMAGE_NAME }}
-      if: env.CHECK_FILE_IS_OK == 'true'      如果: env.CHECK_FILE_IS_OK == 'true'
+    - name: Upload ${{ env.KERNEL_IMAGE_NAME }}
+      if: env.CHECK_FILE_IS_OK == 'true'
       uses: actions/upload-artifact@v4
-      with:      使用:
+      with:
         name: ${{ env.KERNEL_IMAGE_NAME }}${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
         path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
 
-    - name: Upload AnyKernel3    - 名称: 上传 AnyKernel3
-      if: env.CHECK_FILE_IS_OK == 'true'      如果: env.CHECK_FILE_IS_OK == 'true'
+    - name: Upload AnyKernel3
+      if: env.CHECK_FILE_IS_OK == 'true'
       uses: actions/upload-artifact@v4
-      with:      使用:
-        name: AnyKernel3${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}        名称: AnyKernel3${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-        path: kernel_workspace/AnyKernel3/*        路径: kernel_workspace/AnyKernel3/*
+      with:
+        name: AnyKernel3${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
+        path: kernel_workspace/AnyKernel3/*
 
-    - name: Upload DTBO image名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : 上上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : 上上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传 DTBO 镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : 上上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: : 上传 DTBO 镜像名称: 上传DTBO镜像名称: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : 上传DTBO镜像名称: 上传DTBO镜像名称: : : : 上传DTBO镜像名称: : 上传DTBO镜像名称: : : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: 上传DTBO镜像名称: : 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: : : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像名称: : : : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: : : 上传DTBO镜像名称: : 上传DTBO镜像名称: : 上传DTBO镜像名称: 上传DTBO镜像名称: 上传DTBO镜像
+    - name: Upload DTBO image
       if: env.CHECK_DTBO_IS_OK == 'true'
       uses: actions/upload-artifact@v4
-      with:      使用:
-        name: dtbo-${{ env.DEVICE }}-${{ env.BUILD_TIME }}        名称: dtbo-${{ env.设备 }}-${{ env.构建时间 }}
-        path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内        路径: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: ernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img内核工作区/android-kernel/out/arch/${{ env.ARCH }}env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img        路径: 内核工作区/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img        路径: {{ env.ARCH }}/boot/dtbo.img
+      with:
+        name: dtbo-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
+        path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img
 
-    - name: Upload boot image    - 名称: 上传引导镜像    - 名称: 上传引导镜像    - 名称:     - 名称: 上传引导镜像    - 名称: 上传引导镜像    - 名称: 上    - 名称: pload boot image    - 名称: 上传引导镜像    - 名称: 传引导镜像    - 名称: 上传 boot image    - 名称: 上传引导镜像    - 名称: 上传引导镜像    - 名称:     - 名称: 上传引导镜像    - 名称: 上传引导镜像    - 名称: 上    - 名称: pload boot image    - 名称: 传引导镜像    - 名称: 上传启动镜像名称: pload boot image    - 名称: 传引导镜像    - 名称: 传引导镜像    - 名称:     - 名称: 传引导镜像    - 名称: 传引导镜像    - 名称:     - 名称: load boot image    - 名称: 传引导镜像    - 名称: 引导镜像    - 名称: 传 boot image    - 名称: 传引导镜像    - 名称: 传引导镜像    - 名称:     - 名称: 传引导镜像    - 名称: 传引导镜像    - 名称:     - 名称: load boot image    - 名称: 引导镜像    - 名称: 上传启动镜像
-      if: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'      如果: env.MAKE_BOOT_IMAGE_IS_OK == 'true'
+    - name: Upload boot image
+      if: env.MAKE_BOOT_IMAGE_IS_OK == 'true'
       uses: actions/upload-artifact@v4
-      with:      使用:      与:      使用:
-        name: boot${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}        名称: {{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-        path: kernel_workspace/boot.imgUPLOADNAME }}-${{内核工作区/boot.img上传名称 }}-${{内核工作区/boot.img上传名称 }}-${{内核工作区/boot.img上传名称 }}-${{内核工作区/boot.img上传名称 }}-${{内核工作区/boot.img上传名称 }}-${{内核工作区/boot.img上传名称 }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}        路径: 内核工作区/boot.img上传名称 }}-${{ 设备环境 }}-${{ 构建时间环境 }}        路径: 内核工作区/boot.img上传名称 }-${内核工作区/boot.img上传名称  设备环境  构建时间环境 
-        path: kernel_workspace/boot.img env.DEVICE }}-${{ env.BUILD_TIME }}        路径: 内核工作区/boot.img env.设备 }}-${{内核工作区/boot.img 环境设备}}-${{ env.构建时间 }}
-        
+      with:
+        name: boot${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
+        path: kernel_workspace/boot.img  
