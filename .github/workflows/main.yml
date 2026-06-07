@@ -158,11 +158,10 @@ jobs:
         key: build-kernel-${{ env.DEVICE }}${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}
         max-size: 2G
 
-    - name: Build kernel
+    -     - name: Build kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        # Fix gcc-wrapper.py for Python 3 compatibility
-        find .. -name gcc-wrapper.py -exec sed -i 's/print "error, forbidden warning:", m.group(2)/print("error, forbidden warning:", m.group(2))/' {} \;
+        rm -f scripts/gcc-wrapper.py
         export GCC_WRAPPER=
         make olddefconfig O=out
         export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$PATH
