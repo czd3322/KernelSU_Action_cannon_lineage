@@ -147,7 +147,9 @@ jobs:
             echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         fi
         # Fix sp register error for old clang
+                # Fix sp register error for old clang
         sed -i 's/register unsigned long current_stack_pointer asm ("sp");/static inline unsigned long current_stack_pointer(void) { unsigned long sp; asm volatile("mov %0, sp" : "=r"(sp)); return sp; }/' arch/arm64/include/asm/stack_pointer.h
+        echo "CONFIG_VDSO=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
 
     - name: Setup ccache
       if: env.ENABLE_CCACHE == 'true'
