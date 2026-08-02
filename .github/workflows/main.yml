@@ -164,7 +164,7 @@ jobs:
         key: build-kernel-${{ env.DEVICE }}${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}
         max-size: 2G
 
-    - name: Build kernel
+    -     - name: Build kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         touch scripts/gcc-wrapper.py
@@ -177,11 +177,11 @@ jobs:
           export KSU_EXPECTED_SIZE=${{ env.KSU_EXPECTED_SIZE }}
           export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
         fi
-        make -j$(nproc --all) LLVM_IAS=0 CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition" ${{ env.KERNEL_CONFIG }}
+        make -j$(nproc --all) LLVM_IAS=0 CC=clang O=out ARCH=${{ env.ARCH }} CROSS_COMPILE=aarch64-linux-gnu- ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition" ${{ env.KERNEL_CONFIG }}
         if [ ${{ env.ENABLE_CCACHE }} = true ]; then
-            make -j$(nproc --all) LLVM_IAS=0 CC="ccache clang" O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition"
+            make -j$(nproc --all) LLVM_IAS=0 CC="ccache clang" O=out ARCH=${{ env.ARCH }} CROSS_COMPILE=aarch64-linux-gnu- ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition"
         else
-            make -j$(nproc --all) LLVM_IAS=0 CC=clang O=out ARCH=${{ env.ARCH }} ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition"
+            make -j$(nproc --all) LLVM_IAS=0 CC=clang O=out ARCH=${{ env.ARCH }} CROSS_COMPILE=aarch64-linux-gnu- ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} HOSTLDFLAGS="-Wl,--allow-multiple-definition"
         fi
 
     - name: Check a kernel output files
