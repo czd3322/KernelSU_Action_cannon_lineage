@@ -148,8 +148,8 @@ jobs:
         if [ ${{ env.DISABLE_CC_WERROR }} = true ]; then
             echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         fi
-        # Fix sp register error
-            sed -i 's/(regs)->sp = current_stack_pointer;/(regs)->sp = current_stack_pointer();/g' arch/arm64/include/asm/perf_event.h
+        # Fix sp register error: replace current_stack_pointer() with inline asm
+        sed -i 's/(regs)->sp = current_stack_pointer();/(regs)->sp = ({ unsigned long sp; asm volatile("mov %0, sp" : "=r"(sp)); sp; });/g' arch/arm64/include/asm/perf_event.h
         # Empty VDSO files
         for i in arch/arm64/kernel/vdso/*.S; do
             echo "" > $i
