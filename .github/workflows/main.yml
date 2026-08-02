@@ -150,10 +150,6 @@ jobs:
         fi
         # Fix sp register error: replace current_stack_pointer() with inline asm
         sed -i 's/(regs)->sp = current_stack_pointer();/(regs)->sp = ({ unsigned long sp; asm volatile("mov %0, sp" : "=r"(sp)); sp; });/g' arch/arm64/include/asm/perf_event.h
-        # Empty VDSO files
-        for i in arch/arm64/kernel/vdso/*.S; do
-            echo "" > $i
-        done
         # Disable KGDB
         echo "CONFIG_KGDB=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
 
