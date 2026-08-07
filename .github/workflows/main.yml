@@ -69,11 +69,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
-        if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
-          echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
-        else
-          echo "LOCALVERSION=" >> $GITHUB_ENV
-        fi
+        echo "LOCALVERSION=" >> $GITHUB_ENV
 
     - name: Download source boot image
       if: env.BUILD_BOOT_IMG == 'true'
@@ -143,9 +139,9 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-gnu-
         export KBUILD_BUILD_HOST=Github-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
-        if [ ! -z ${{ env.KSU_EXPECTED_SIZE }} ] && [ ! -z ${{ env.KSU_EXPECTED_HASH }} ]; then
-          export KSU_EXPECTED_SIZE=${{ env.KSU_EXPECTED_SIZE }}
-          export KSU_EXPECTED_HASH=${{ env.KSU_EXPECTED_HASH }}
+        if [[ -n "${{ env.KSU_EXPECTED_SIZE }}" && -n "${{ env.KSU_EXPECTED_HASH }}" ]]; then
+          export KSU_EXPECTED_SIZE="${{ env.KSU_EXPECTED_SIZE }}"
+          export KSU_EXPECTED_HASH="${{ env.KSU_EXPECTED_HASH }}"
         fi
         make -j$(nproc --all) O=out ${{ env.CUSTOM_CMDS }} ${{ env.EXTRA_CMDS }} ${{ env.GCC_64 }} ${{ env.GCC_32 }} ${{ env.KERNEL_CONFIG }}
         if [[ "${{ env.ENABLE_CCACHE }}" == "true" ]]; then
