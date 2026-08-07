@@ -68,16 +68,15 @@ jobs:
           cd $GITHUB_WORKSPACE/kernel_workspace
           git clone https://android.googlesource.com/platform/system/tools/mkbootimg tools -b master-kernel-build-2022 --depth=1
 
-      -       - name: Download kernel source
+      - name: Download kernel source
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
-          # 私有仓库注入token，公开仓库token也不会产生副作用
           REPO_URL=${{ env.KERNEL_SOURCE }}
           if [[ "$REPO_URL" == https://github.com/* ]]; then
               REPO_URL_WITH_TOKEN="https://${{ secrets.GITHUB_TOKEN }}@${REPO_URL#https://}"
-              git clone $REPO_URL_WITH_TOKEN -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+              git clone "${REPO_URL_WITH_TOKEN}" -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
           else
-              git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+              git clone "${{ env.KERNEL_SOURCE }}" -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
           fi
           if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
             echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
@@ -85,14 +84,13 @@ jobs:
             echo "LOCALVERSION=" >> $GITHUB_ENV
           fi
 
-
       - name: Download source boot image
         if: env.BUILD_BOOT_IMG == 'true'
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
           wget -O boot-source.img ${{ env.SOURCE_BOOT_IMAGE }}
           if [ -f boot-source.img ]; then
-              echo "FORMAT_MKBOOTING=$(echo `tools/unpack_bootimg.py --boot_img=boot-source.img --format mkbootimg`)" >> $GITHUB_ENV
+              echo "FORMAT_MKBOOTING=$(tools/unpack_bootimg.py --boot_img=boot-source.img --format mkbootimg)" >> $GITHUB_ENV
               echo "HAVE_SOURCE_BOOT_IMAGE=true" >> $GITHUB_ENV
           fi
 
@@ -102,15 +100,13 @@ jobs:
           cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
           rm -rf KernelSU drivers/kernelsu
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s ${{ env.KERNELSU_TAG }}
-          KSU_VERSION=$(cd KernelSU && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
+          KSU_VERSION=$(cd KernelSU && expr $(git rev-list --count HEAD) + 10200)
           echo "UPLOADNAME=-KernelSU_$KSU_VERSION" >> $GITHUB_ENV
 
       - name: Setup Configuration for Kernel
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-          # Fix broken init/Kconfig
           sed -i '16,17d' init/Kconfig
-
           if [[ "${{ env.ENABLE_KERNELSU }}" == "true" ]]; then
               if grep -q "CONFIG_KSU" arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}; then
                   sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
@@ -119,30 +115,24 @@ jobs:
                   echo "CONFIG_KSU=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               fi
           fi
-
           if [[ "${{ env.ADD_KPROBES_CONFIG }}" == "true" ]]; then
               echo "CONFIG_MODULES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               echo "CONFIG_KPROBES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               echo "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               echo "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
           fi
-
           if [[ "${{ env.ADD_OVERLAYFS_CONFIG }}" == "true" ]]; then
               echo "CONFIG_OVERLAY_FS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
           fi
-
           if [[ "${{ env.DISABLE-LTO }}" == "true" ]]; then
               sed -i 's/CONFIG_LTO=y/CONFIG_LTO=n/' arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               sed -i 's/CONFIG_LTO_CLANG=y/CONFIG_LTO_CLANG=n/' arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               sed -i 's/CONFIG_THINLTO=y/CONFIG_THINLTO=n/' arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
               echo "CONFIG_LTO_NONE=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
           fi
-
           if [[ "${{ env.DISABLE_CC_WERROR }}" == "true" ]]; then
               echo "CONFIG_CC_WERROR=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
           fi
-
-          # Disable KGDB
           echo "CONFIG_KGDB=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
 
       - name: Setup ccache
@@ -200,7 +190,7 @@ jobs:
           fi
           rm -rf AnyKernel3/.git* AnyKernel3/README.md
 
-      - name: Make Custom-Anykernel3
+      - name: Make Custom‑Anykernel3
         if: env.CHECK_FILE_IS_OK == 'true' && env.USE_CUSTOM_ANYKERNEL3 == 'true'
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
@@ -217,9 +207,9 @@ jobs:
               mkdir AnyKernel3
               unzip AnyKernel3.zip -d AnyKernel3/
           fi
-          cp android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} AnyKernel3/
+          cp android‑kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} AnyKernel3/
           if [[ "${{ env.CHECK_DTBO_IS_OK }}" == "true" ]]; then
-              cp android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
+              cp android‑kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
           fi
           rm -rf AnyKernel3/.git* AnyKernel3/README.md
 
@@ -242,7 +232,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.KERNEL_IMAGE_NAME }}${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-          path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
+          path: kernel_workspace/android‑kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
 
       - name: Upload AnyKernel3
         if: env.CHECK_FILE_IS_OK == 'true'
@@ -256,7 +246,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dtbo-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-          path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img
+          path: kernel_workspace/android‑kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img
 
       - name: Upload boot image
         if: env.MAKE_BOOT_IMAGE_IS_OK == 'true'
