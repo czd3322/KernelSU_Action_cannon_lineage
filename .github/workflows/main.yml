@@ -68,15 +68,23 @@ jobs:
           cd $GITHUB_WORKSPACE/kernel_workspace
           git clone https://android.googlesource.com/platform/system/tools/mkbootimg tools -b master-kernel-build-2022 --depth=1
 
-      - name: Download kernel source
+      -       - name: Download kernel source
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
-          git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+          # 私有仓库注入token，公开仓库token也不会产生副作用
+          REPO_URL=${{ env.KERNEL_SOURCE }}
+          if [[ "$REPO_URL" == https://github.com/* ]]; then
+              REPO_URL_WITH_TOKEN="https://${{ secrets.GITHUB_TOKEN }}@${REPO_URL#https://}"
+              git clone $REPO_URL_WITH_TOKEN -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+          else
+              git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
+          fi
           if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
             echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
           else
             echo "LOCALVERSION=" >> $GITHUB_ENV
           fi
+
 
       - name: Download source boot image
         if: env.BUILD_BOOT_IMG == 'true'
