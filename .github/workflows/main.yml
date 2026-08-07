@@ -71,13 +71,8 @@ jobs:
       - name: Download kernel source
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
-          REPO_URL=${{ env.KERNEL_SOURCE }}
-          if [[ "$REPO_URL" == https://github.com/* ]]; then
-              REPO_URL_WITH_TOKEN="https://${{ secrets.GITHUB_TOKEN }}@${REPO_URL#https://}"
-              git clone "${REPO_URL_WITH_TOKEN}" -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
-          else
-              git clone "${{ env.KERNEL_SOURCE }}" -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
-          fi
+          echo "DEBUG KERNEL_SOURCE -->${{ env.KERNEL_SOURCE }}<--"
+          git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
           if [[ ${{ env.ADD_LOCALVERSION_TO_FILENAME }} == 'true' ]]; then
             echo "LOCALVERSION=$(cat android-kernel/localversion)" >> $GITHUB_ENV
           else
@@ -160,21 +155,21 @@ jobs:
 
       - name: Check a kernel output files
         run: |
-         cd $GITHUB_WORKSPACE/kernel_workspace
-         if [ -f android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} ]; then
-             echo "CHECK_FILE_IS_OK=true" >> $GITHUB_ENV
-         else
-             echo "Kernel output file is empty"
-             exit 1
-         fi
-         if [[ "${{ env.NEED_DTBO }}" == "true" ]]; then
-             if [ -f android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img ]; then
-                 echo "CHECK_DTBO_IS_OK=true" >> $GITHUB_ENV
-             else
-                 echo "DTBO image is empty"
-                 exit 1
-             fi
-         fi
+          cd $GITHUB_WORKSPACE/kernel_workspace
+          if [ -f android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} ]; then
+              echo "CHECK_FILE_IS_OK=true" >> $GITHUB_ENV
+          else
+              echo "Kernel output file is empty"
+              exit 1
+          fi
+          if [[ "${{ env.NEED_DTBO }}" == "true" ]]; then
+              if [ -f android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img ]; then
+                  echo "CHECK_DTBO_IS_OK=true" >> $GITHUB_ENV
+              else
+                  echo "DTBO image is empty"
+                  exit 1
+              fi
+          fi
 
       - name: Make Anykernel3
         if: env.CHECK_FILE_IS_OK == 'true' && env.USE_CUSTOM_ANYKERNEL3 != 'true'
@@ -207,9 +202,9 @@ jobs:
               mkdir AnyKernel3
               unzip AnyKernel3.zip -d AnyKernel3/
           fi
-          cp android‑kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} AnyKernel3/
+          cp android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} AnyKernel3/
           if [[ "${{ env.CHECK_DTBO_IS_OK }}" == "true" ]]; then
-              cp android‑kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
+              cp android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img AnyKernel3/
           fi
           rm -rf AnyKernel3/.git* AnyKernel3/README.md
 
@@ -232,7 +227,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.KERNEL_IMAGE_NAME }}${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-          path: kernel_workspace/android‑kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
+          path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
 
       - name: Upload AnyKernel3
         if: env.CHECK_FILE_IS_OK == 'true'
@@ -246,7 +241,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dtbo-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-          path: kernel_workspace/android‑kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img
+          path: kernel_workspace/android-kernel/out/arch/${{ env.ARCH }}/boot/dtbo.img
 
       - name: Upload boot image
         if: env.MAKE_BOOT_IMAGE_IS_OK == 'true'
